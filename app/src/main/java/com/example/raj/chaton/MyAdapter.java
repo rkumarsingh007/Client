@@ -24,7 +24,7 @@ class MyAdapter extends ArrayAdapter<Data> {
         View listItemView = contentview;
         if (listItemView == null) {
             listItemView = LayoutInflater.from(getContext()).inflate(
-                    R.layout.main, GroupParent,false);
+                    R.layout.message, GroupParent,false);
         }
         Data example = getItem(postion);
         TextView message = (TextView) listItemView.findViewById(R.id.message);
@@ -36,7 +36,7 @@ class MyAdapter extends ArrayAdapter<Data> {
         }
         else {
             message.setGravity(Gravity.LEFT);
-            message.setBackgroundColor(250235215);
+            message.setBackgroundColor(135206250);
         }
         return contentview;
     }

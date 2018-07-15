@@ -17,17 +17,20 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
-public class main extends AppCompatActivity implements Runnable {
+public class main extends AppCompatActivity  {
 
     public static Exception ex;
     public static boolean server_status = false;
     public static TextView text;
     public static EditText message;
-    public static int sport = 9216 ;
+    public static int sport = 6666 ;
     public static String serverIp ;
     public static Button send;
     public static boolean surver_status= true;
@@ -35,8 +38,9 @@ public class main extends AppCompatActivity implements Runnable {
     public static MyAdapter myAdapter;
     public static ArrayList<Data> messagesArray;
     public static ListView display;
-    public static Thread t;
-    public static boolean message_ent=false;
+    public static Boolean message_ent;
+    public static main m;
+    public static waitInBack w;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
@@ -48,40 +52,18 @@ public class main extends AppCompatActivity implements Runnable {
         messagesArray = new ArrayList<Data>();
         myAdapter= new MyAdapter(this,messagesArray);
         display.setAdapter(myAdapter);
-        serverIp = "192.168.151.169";
-        t = new Thread(new main());
-        t.start();
+        serverIp = "192.168.151.205";
+        //m= new main();
+        w= new waitInBack();
+        new Thread(w).start();
+        message_ent = false;
         ex = new Exception();
-    }
-    //public static Thread t;
-    void main()  {
-        try {
-            serversocket = new Socket(serverIp, sport);
-        } catch (UnknownHostException e) {
-            alert("Oops","Hots :"+serverIp+" Not found");
-            t.interrupt();
-        } catch (IOException e) {
-            alert("Error","IOException occured");
-            t.interrupt();
-        }
-    }
-    @Override
-    public void run() {
-        while (surver_status){
-                if(message_ent =true);
-                {
-                    new communicationThread();
-                    message_ent = false;
-                }
-
-        }
-        alertfinish("Bye", "click finish to close the app");
     }
     protected void onResume() {
 
         super.onResume();
-        t.interrupt();
         try {
+            if(serversocket!=null)
             serversocket.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -89,8 +71,12 @@ public class main extends AppCompatActivity implements Runnable {
     }
     protected void onStop() {
         super.onStop();
-        if (!t.isInterrupted())
-            t.interrupt();
+        if (serversocket!=null)
+            try {
+                serversocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
     }
     private void onButtonClick() {
         send.setOnClickListener(new View.OnClickListener() {
@@ -98,17 +84,15 @@ public class main extends AppCompatActivity implements Runnable {
             public void onClick(View view) {
                 try {
                     if(serversocket==null){
-                        alert("Oops","No user online to send message wait for the client to join");
+                        alert("Oops","SERVER is OFF !!! :( ");
                         message.setText(null);
                         return;
                     }
-                    messagesArray.add(new Data(message.getText().toString(), true));
-                    display.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            myAdapter.notifyDataSetChanged();
-                        }
-                    });
+                    if(message.getText().toString()==null){
+                        Toast.makeText(getApplicationContext(),"Enter Some Text !!!",Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    myAdapter.add(new Data(message.getText().toString(), true));
                     new ObjectOutputStream(serversocket.getOutputStream()).writeObject(new Data(message.getText().toString(),true));
                     message.setText(null);
                     message_ent =true;
@@ -119,16 +103,12 @@ public class main extends AppCompatActivity implements Runnable {
                 }
             }
         });
-
     }
-
-    public boolean onCreateOptionsMenu( Menu menu)
-    {
+    public boolean onCreateOptionsMenu( Menu menu){
         getMenuInflater().inflate(R.menu.menu_main , menu);
         return true;
     }
-    public boolean onOptionsItemSelected (MenuItem item)
-    {
+    public boolean onOptionsItemSelected (MenuItem item){
         switch ( item.getItemId()) {
             case R.id.info_id: {
                 Toast.makeText(getApplicationContext(), "info is clicked", Toast.LENGTH_SHORT).show();
@@ -142,8 +122,7 @@ public class main extends AppCompatActivity implements Runnable {
                 return super.onOptionsItemSelected(item);
         }
     }
-    public void alert (String title ,String body)
-    {
+    synchronized public void alert (String title ,String body){
         final AlertDialog.Builder Alert = new AlertDialog.Builder(this);
         Alert.setCancelable(true)
                 .setTitle(title)
@@ -156,9 +135,7 @@ public class main extends AppCompatActivity implements Runnable {
         });
         Alert.create().show();
     }
-
-    private void alertfinish(String title ,String body)
-    {
+    private void alertfinish(String title ,String body){
         final AlertDialog.Builder Alert = new AlertDialog.Builder(this);
         Alert.setCancelable(true)
                 .setTitle(title)
@@ -171,7 +148,33 @@ public class main extends AppCompatActivity implements Runnable {
         });
         Alert.create().show();
     }
-
+    class waitInBack implements Runnable{
+        @Override
+        public void run() {
+            try {
+                serversocket = new Socket(serverIp,sport);
+                /*SocketAddress adr = new InetSocketAddress(serverIp, sport);
+                serversocket.connect(adr,1500);*/
+            } catch (UnknownHostException e) {
+                alert("Oops", "Hots :" + serverIp + " Not found");
+            } catch (IOException e) {
+                try {
+                    serversocket.close();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+                //alert("Error", "IOException occured");
+            }
+            while (surver_status){
+                if(message_ent==true)
+                {
+                    new communicationThread();
+                    message_ent = false;
+                }
+            }
+            alertfinish("Bye", "click finish to close the app");
+        }
+    }
     class communicationThread implements Runnable {
 
         DataInputStream input = null;
@@ -188,15 +191,16 @@ public class main extends AppCompatActivity implements Runnable {
         public void run() {
             try{
                 Data example = (Data) new ObjectInputStream( serversocket.getInputStream()).readObject();
+                out.flush();
                 String inputLine;
                 inputLine = example.message;
                 if(inputLine==null){
                     throw  ex;
                 }
-                messagesArray.add(new Data(inputLine.toString(), false));
-                if (inputLine.toString().equals("STOP")) {
+                myAdapter.add(new Data(inputLine, false));
+                if (inputLine.equals("STOP")) {
                     server_status = false;
-                    t.interrupt();
+                    //t.interrupt();
                 }
                 display.post(new Runnable() {
                     @Override
@@ -204,7 +208,7 @@ public class main extends AppCompatActivity implements Runnable {
                         myAdapter.notifyDataSetChanged();
                     }
                 });
-                Toast.makeText(getApplicationContext(),"new message "+inputLine.toString(),Toast.LENGTH_LONG);
+                Toast.makeText(getApplicationContext(),"new message "+inputLine,Toast.LENGTH_LONG);
                 input.close();
             } catch (IOException e) {
                 e.printStackTrace();
